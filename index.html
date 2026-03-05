@@ -1495,10 +1495,29 @@ function populatePreviewFromProposal(){
   document.getElementById('pv-model').textContent=modelLabel;
   document.getElementById('pv-model2').textContent=modelLabel;
   document.getElementById('pv-date').textContent=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-  // Fill proposal text if available
+
+  // ── Sync proposal text from AI generation step ──
   const proposalTxt=document.getElementById('claude-out')?.textContent;
   if(proposalTxt && proposalTxt.trim()){
     document.getElementById('pv-proposal-text').innerHTML=proposalTxt.replace(/\n\n/g,'<br><br>');
+  }
+
+  // ── Sync moodboard: use real Leonardo AI images if available, else keep Unsplash fallbacks ──
+  const leoGallery = document.getElementById('leo-gallery');
+  const moodboard  = document.querySelector('.preview-moodboard');
+  if(leoGallery && moodboard){
+    const realImgs = Array.from(leoGallery.querySelectorAll('img')).map(i=>i.src).filter(s=>s && !s.includes('data:'));
+    if(realImgs.length >= 4){
+      // Replace moodboard cells with real AI-generated images
+      const cells = moodboard.querySelectorAll('.mb-cell');
+      const tags = ['Concept Direction','Digital Presence','Editorial','Product Context','Identity System','Campaign'];
+      realImgs.forEach((src, i)=>{
+        if(cells[i]){
+          const img = cells[i].querySelector('img');
+          if(img){ img.src = src; img.alt = tags[i]||'AI Visual'; }
+        }
+      });
+    }
   }
 }
 
@@ -1716,6 +1735,8 @@ window.addEventListener('resize',()=>{
   if(S.step==='about') initAbout();
   if(S.step==='project-preview') initProjectPreviewCanvas();
 });
+
+  
 </script>
 </body>
-</html>
+</html> mira 
