@@ -1472,18 +1472,7 @@ function setLoader(on, txt=''){
   const l=document.getElementById('loader'); l.classList.toggle('on',on);
   if(txt) document.getElementById('loader-txt').textContent=txt;
 }
-{
-  "version": 2,
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/(.*)", "destination": "/public/index.html" }
-  ]
-}
+
 // ══════════════════════════════════════════
 // PROJECT PREVIEW — populate data
 // ══════════════════════════════════════════
@@ -1539,14 +1528,7 @@ function startZipProgress(){
     },s.delay);
   });
 }
-fetch("/api/generate", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    vision: visionInput,
-    selections
-  })
-})
+
 // ══════════════════════════════════════════
 // ZIP DOWNLOAD
 // ══════════════════════════════════════════
@@ -1734,8 +1716,6 @@ window.addEventListener('resize',()=>{
   if(S.step==='about') initAbout();
   if(S.step==='project-preview') initProjectPreviewCanvas();
 });
-
-  
 </script>
 </body>
 </html>
