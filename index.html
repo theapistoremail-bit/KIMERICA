@@ -833,12 +833,12 @@ nav{position:fixed;top:0;left:0;width:100%;padding:22px 5%;display:flex;justify-
           <div class="ai-text" id="claude-out"></div>
         </div>
         <div>
-          <div class="out-label">Visual Concept — Leonardo AI</div>
+          <div class="out-label">Visual Concept — Live Environments</div>
           <div class="img-grid" id="leo-gallery">
-            <div class="img-ph">Generating...</div>
-            <div class="img-ph">Generating...</div>
-            <div class="img-ph">Generating...</div>
-            <div class="img-ph">Generating...</div>
+            <div class="img-ph" style="position:relative;overflow:hidden"><canvas id="prop-cv-1" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div>
+            <div class="img-ph" style="position:relative;overflow:hidden"><canvas id="prop-cv-2" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div>
+            <div class="img-ph" style="position:relative;overflow:hidden"><canvas id="prop-cv-3" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div>
+            <div class="img-ph" style="position:relative;overflow:hidden"><canvas id="prop-cv-4" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div>
           </div>
         </div>
       </div>
@@ -1441,6 +1441,8 @@ async function callBackendAI(vision){
       else loadFallbackImgs();
       populateScope(d.scope||{});
       document.getElementById('proposal-out').classList.add('on');
+      // Launch live canvases regardless of whether Leonardo returned images
+      setTimeout(()=>{ loadFallbackImgs(); },80);
       toast('Proposal generated ✓','ok');
     } else {
       throw new Error('backend_unavailable');
@@ -1454,13 +1456,126 @@ async function callBackendAI(vision){
 }
 
 function renderImages(imgs){
-  const gal = document.getElementById('leo-gallery'); gal.innerHTML='';
-  imgs.forEach(url=>{const d=document.createElement('div');d.className='img-ph';const i=document.createElement('img');i.src=url;i.style.cssText='width:100%;height:100%;object-fit:cover';d.appendChild(i);gal.appendChild(d)});
+  // If real Leonardo images come back, show them over the canvases
+  const gal = document.getElementById('leo-gallery');
+  const cells = gal.querySelectorAll('.img-ph');
+  imgs.forEach((url,i)=>{
+    if(!cells[i]) return;
+    const img=document.createElement('img');
+    img.src=url; img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2';
+    cells[i].appendChild(img);
+  });
 }
 
 function loadFallbackImgs(){
-  const imgs=['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop','https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&auto=format&fit=crop','https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&auto=format&fit=crop','https://images.unsplash.com/photo-1606293926075-69a00dbfde81?w=400&auto=format&fit=crop'];
-  renderImages(imgs);
+  // No Unsplash — launch live canvas environments instead
+  const vision = document.getElementById('vision')?.value || '';
+  _initPropCanvas1(vision);
+  _initPropCanvas2(vision);
+  _initPropCanvas3();
+  _initPropCanvas4();
+}
+
+// ── Proposal Canvas 1: 3D object (Three.js) ──
+function _initPropCanvas1(vision){
+  const cv=document.getElementById('prop-cv-1'); if(!cv||!window.THREE) return;
+  const W=cv.parentElement.offsetWidth||200, H=cv.parentElement.offsetHeight||180;
+  if(cv._r){cv._r.dispose();cancelAnimationFrame(cv._af)}
+  const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(W,H); renderer.setClearColor(0x060608); cv._r=renderer;
+  const scene=new THREE.Scene(); const cam=new THREE.PerspectiveCamera(46,W/H,.1,100); cam.position.set(0,0,4.5);
+  scene.add(new THREE.AmbientLight(0xffffff,.1));
+  const rl=new THREE.PointLight(0xFF1A1A,5,18); rl.position.set(3,3,3); scene.add(rl);
+  const geo=new THREE.IcosahedronGeometry(1.2,2);
+  const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xdddddd,metalness:.95,roughness:.04})); scene.add(mesh);
+  scene.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.26,2),new THREE.MeshBasicMaterial({color:0xFF1A1A,wireframe:true,opacity:.09,transparent:true})));
+  // Orbiting dots
+  for(let i=0;i<3;i++){
+    const s=new THREE.Mesh(new THREE.SphereGeometry(.04,8,8),new THREE.MeshStandardMaterial({color:0xFF1A1A,emissive:0xFF1A1A,emissiveIntensity:.9}));
+    const a=i*(Math.PI*2/3); let f2=0;
+    scene.add(s);
+    (function orbit(s,a){(function l(){cv._af=requestAnimationFrame(l);f2+=.012;s.position.x=Math.cos(f2+a)*1.9;s.position.z=Math.sin(f2+a)*1.9;s.position.y=Math.sin(f2*1.3)*.5})()} )(s,a);
+  }
+  let f=0;
+  (function loop(){cv._af=requestAnimationFrame(loop);f+=.007;mesh.rotation.y=f;mesh.rotation.x=Math.sin(f*.4)*.2;renderer.render(scene,cam)})();
+}
+
+// ── Proposal Canvas 2: Code terminal ──
+function _initPropCanvas2(vision){
+  const cv=document.getElementById('prop-cv-2'); if(!cv) return;
+  const W=cv.parentElement.offsetWidth||200, H=cv.parentElement.offsetHeight||180;
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  const words=vision.split(/\s+/).filter(w=>w.length>3).slice(0,6);
+  const base=['brand','identity','system','digital','creative','motion','launch','deploy'];
+  const kws=words.length>=3?words:base;
+  const lines=kws.map((w,i)=>`${['const','let','fn','→','class','type','async','export'][i%8]} ${w.toLowerCase().replace(/[^a-z]/g,'')} = ${['{}','[]','true','"KIMERICA"','0xFF1A1A','new Scene()','()=>{}','null'][i%8]};`);
+  let t=0, charI=Array(lines.length).fill(0);
+  const lh=Math.floor(H/lines.length)*.88;
+  const fs=Math.max(9,Math.floor(lh*.52));
+  function draw(){
+    ctx.fillStyle='rgba(6,6,8,.2)'; ctx.fillRect(0,0,W,H);
+    ctx.font=`${fs}px 'Courier New',monospace`;
+    lines.forEach((line,i)=>{
+      if(i===Math.floor(t/7)%lines.length && charI[i]<line.length) charI[i]++;
+      const shown=line.substring(0,charI[i]);
+      ctx.fillStyle=i%3===0?'rgba(255,26,26,.85)':i%3===1?'rgba(248,246,242,.5)':'rgba(248,246,242,.22)';
+      ctx.fillText(shown,8,14+i*(lh+1));
+    });
+    if(charI.every((c,i)=>c>=lines[i].length)){setTimeout(()=>{charI=Array(lines.length).fill(0);t=0},1200)}
+    t++; requestAnimationFrame(draw);
+  }
+  ctx.fillStyle='#060608'; ctx.fillRect(0,0,W,H); draw();
+}
+
+// ── Proposal Canvas 3: Particle field ──
+function _initPropCanvas3(){
+  const cv=document.getElementById('prop-cv-3'); if(!cv) return;
+  const W=cv.parentElement.offsetWidth||200, H=cv.parentElement.offsetHeight||180;
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  const pts=Array.from({length:55},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.5,vy:(Math.random()-.5)*.5,r:Math.random()*1.4+.4,p:Math.random()*Math.PI*2}));
+  function draw(){
+    ctx.fillStyle='rgba(6,6,8,.22)'; ctx.fillRect(0,0,W,H);
+    pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.p+=.04;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1});
+    for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<70){ctx.strokeStyle=`rgba(255,26,26,${.35-d/200})`;ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.stroke()}
+    }
+    pts.forEach(p=>{const a=.4+Math.sin(p.p)*.3;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,26,26,${a})`;ctx.fill()});
+    requestAnimationFrame(draw);
+  }
+  ctx.fillStyle='#060608'; ctx.fillRect(0,0,W,H); draw();
+}
+
+// ── Proposal Canvas 4: Generative typography ──
+function _initPropCanvas4(){
+  const cv=document.getElementById('prop-cv-4'); if(!cv) return;
+  const W=cv.parentElement.offsetWidth||200, H=cv.parentElement.offsetHeight||180;
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  const vision=document.getElementById('vision')?.value||'';
+  const word=(vision.split(/\s+/).find(w=>w.length>4)||'KIMERICA').toUpperCase().substring(0,8);
+  let t=0;
+  function draw(){
+    ctx.fillStyle='rgba(6,6,8,.15)'; ctx.fillRect(0,0,W,H);
+    const fs=Math.floor(W*.18);
+    ctx.font=`300 ${fs}px 'Cormorant Garamond',serif`;
+    ctx.textAlign='center';
+    ctx.fillStyle=`rgba(248,246,242,${.5+Math.sin(t*.022)*.15})`;
+    ctx.fillText(word,W/2,H/2+fs*.32);
+    const uw=ctx.measureText(word).width;
+    const grad=ctx.createLinearGradient(W/2-uw/2,0,W/2+uw/2,0);
+    grad.addColorStop(0,'transparent'); grad.addColorStop(.4+Math.sin(t*.03)*.15,'rgba(255,26,26,.9)'); grad.addColorStop(1,'transparent');
+    ctx.strokeStyle=grad; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(W/2-uw/2,H/2+fs*.4); ctx.lineTo(W/2+uw/2,H/2+fs*.4); ctx.stroke();
+    ctx.font=`700 ${Math.floor(W*.07)}px 'Syne',sans-serif`;
+    ctx.fillStyle='rgba(255,26,26,.6)';
+    ctx.fillText('IDENTITY',W/2,H*.8);
+    ctx.textAlign='left';
+    t++; requestAnimationFrame(draw);
+  }
+  ctx.fillStyle='#060608'; ctx.fillRect(0,0,W,H); draw();
 }
 
 function populateScope(sc){
