@@ -1472,7 +1472,18 @@ function setLoader(on, txt=''){
   const l=document.getElementById('loader'); l.classList.toggle('on',on);
   if(txt) document.getElementById('loader-txt').textContent=txt;
 }
-
+{
+  "version": 2,
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/(.*)", "destination": "/public/index.html" }
+  ]
+}
 // ══════════════════════════════════════════
 // PROJECT PREVIEW — populate data
 // ══════════════════════════════════════════
@@ -1723,18 +1734,7 @@ window.addEventListener('resize',()=>{
   if(S.step==='about') initAbout();
   if(S.step==='project-preview') initProjectPreviewCanvas();
 });
-{
-  "version": 2,
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/(.*)", "destination": "/public/index.html" }
-  ]
-}
+
   
 </script>
 </body>
